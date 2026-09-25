@@ -6,6 +6,7 @@
   <title>Lowkey Studios — Team Availability & Calendar Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
@@ -63,6 +64,11 @@
         <div class="flex items-center gap-2">
           <h1 class="font-extrabold tracking-tight text-base text-white">LOWKEY STUDIOS</h1>
           <span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono font-bold">52-Week Hub</span>
+          <!-- CLOUD SYNC BADGE -->
+          <div id="cloud-status-badge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/70 text-emerald-400 border border-emerald-500/40">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Live Cloud Sync</span>
+          </div>
         </div>
         <p class="text-xs text-gray-400">Team Availability Matrix & Year-Round Milestone Tracker (3 Core Members)</p>
       </div>
@@ -446,6 +452,115 @@
       return `${y}-${m}-${d}`;
     }
 
+    // Supabase Realtime Cloud Integration
+    const SUPABASE_URL = 'https://qbrbcebctuvrootgdulh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_oTM1Smgw2EBC3Zqk2IXGyA_8i-VzxMO';
+    let supabaseClient = null;
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      console.warn('Supabase initialization error:', e);
+    }
+
+    let cloudSyncTimeout = null;
+    function debouncedCloudSync() {
+      if (!supabaseClient) return;
+      clearTimeout(cloudSyncTimeout);
+      cloudSyncTimeout = setTimeout(syncToCloud, 400);
+    }
+
+    async function syncToCloud() {
+      if (!supabaseClient) return;
+      const badge = document.getElementById('cloud-status-badge');
+      if (badge) {
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-spin"></span><span>Saving...</span>';
+      }
+      const payload = {
+        schedules: schedules,
+        lastUpdatedBy: currentMember,
+        timestamp: new Date().toISOString()
+      };
+      try {
+        await supabaseClient
+          .from('team_availability')
+          .upsert({ id: 'matrix_state', data: payload, updated_at: new Date().toISOString() });
+        if (badge) {
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/70 text-emerald-400 border border-emerald-500/40';
+          badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Live Cloud Sync</span>';
+        }
+      } catch (err) {
+        console.error('Cloud sync error:', err);
+        if (badge) {
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-950/70 text-rose-400 border border-rose-500/40';
+          badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>Offline</span>';
+        }
+      }
+    }
+
+    function applyRemoteData(remoteData, isInitial = false) {
+      if (!remoteData) return;
+      if (remoteData.schedules) {
+        schedules = {
+          miaro: { ...schedules.miaro, ...(remoteData.schedules.miaro || {}) },
+          joachim: { ...schedules.joachim, ...(remoteData.schedules.joachim || {}) },
+          nicholas: { ...schedules.nicholas, ...(remoteData.schedules.nicholas || {}) }
+        };
+        localStorage.setItem('lowkey_matrix_miaro', JSON.stringify(schedules.miaro));
+        localStorage.setItem('lowkey_matrix_joachim', JSON.stringify(schedules.joachim));
+        localStorage.setItem('lowkey_matrix_nicholas', JSON.stringify(schedules.nicholas));
+      }
+      renderWeek();
+      if (!isInitial) {
+        const byName = remoteData.lastUpdatedBy === 'miaro' ? '👑 Miaro' : remoteData.lastUpdatedBy === 'joachim' ? '⚙️ Joachim' : remoteData.lastUpdatedBy === 'nicholas' ? '📢 Nicholas' : 'Teammate';
+        showToast(`⚡ Live update synced from ${byName}!`);
+      }
+    }
+
+    async function initSupabaseCloud() {
+      if (!supabaseClient) return;
+      
+      // 1. Initial Fetch
+      try {
+        const { data, error } = await supabaseClient
+          .from('team_availability')
+          .select('data')
+          .eq('id', 'matrix_state')
+          .single();
+        if (data && data.data && data.data.schedules) {
+          applyRemoteData(data.data, true);
+        } else {
+          // If empty in cloud, seed with current state
+          syncToCloud();
+        }
+      } catch (e) {
+        console.warn('Initial cloud fetch:', e);
+      }
+
+      // 2. Realtime WebSocket subscription
+      try {
+        supabaseClient
+          .channel('public:team_availability')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'team_availability' }, payload => {
+            if (payload.new && payload.new.id === 'matrix_state' && payload.new.data) {
+              applyRemoteData(payload.new.data, false);
+            }
+          })
+          .subscribe((status) => {
+            const badge = document.getElementById('cloud-status-badge');
+            if (badge) {
+              if (status === 'SUBSCRIBED') {
+                badge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/70 text-emerald-400 border border-emerald-500/40';
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Live Cloud Sync</span>';
+              }
+            }
+          });
+      } catch (e) {
+        console.warn('Realtime subscribe error:', e);
+      }
+    }
+
     // Storage: schedules[member][YYYY-MM-DD] = array of 24 ints (0-5)
     let schedules = {
       miaro: JSON.parse(localStorage.getItem('lowkey_matrix_miaro')) || {},
@@ -712,6 +827,7 @@
       localStorage.setItem('lowkey_matrix_miaro', JSON.stringify(schedules.miaro));
       localStorage.setItem('lowkey_matrix_joachim', JSON.stringify(schedules.joachim));
       localStorage.setItem('lowkey_matrix_nicholas', JSON.stringify(schedules.nicholas));
+      debouncedCloudSync();
     }
 
     function applyPreset(type) {
@@ -1217,6 +1333,7 @@
     // Initial render & state load
     loadFromHash();
     renderWeek();
+    initSupabaseCloud();
   </script>
 </body>
 </html>
