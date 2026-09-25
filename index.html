@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lowkey Studios — Team Availability & Calendar Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            dark: {
+              950: '#070A0F',
+              900: '#0B0F17',
+              800: '#111827',
+              700: '#1F2937',
+              600: '#374151',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .slot-cell {
+      transition: all 0.08s ease-in-out;
+      user-select: none;
+    }
+    .slot-cell:hover {
+      transform: scale(1.02);
+      z-index: 20;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-dark-950 text-gray-100 font-sans min-h-screen flex flex-col selection:bg-amber-500 selection:text-black">
+
+  <!-- TOP HEADER -->
+  <header class="border-b border-dark-700 bg-dark-900/90 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+        <i data-lucide="calendar-range" class="w-6 h-6 text-black font-bold"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-extrabold tracking-tight text-base text-white">LOWKEY STUDIOS</h1>
+          <span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono font-bold">52-Week Hub</span>
+        </div>
+        <p class="text-xs text-gray-400">Team Availability Matrix & Year-Round Milestone Tracker (3 Core Members)</p>
+      </div>
+    </div>
+
+    <!-- MEMBER TABS -->
+    <div class="flex items-center bg-dark-900 p-1 rounded-xl border border-dark-700 gap-1" id="member-tabs">
+      <button onclick="selectMember('miaro')" id="tab-miaro" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-amber-500 text-black shadow-md">
+        <span>👑 Miaro</span>
+        <span class="text-[10px] opacity-75 font-mono">(Lead)</span>
+      </button>
+      <button onclick="selectMember('joachim')" id="tab-joachim" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-gray-400 hover:text-white hover:bg-dark-800">
+        <span>⚙️ Joachim</span>
+        <span class="text-[10px] opacity-75 font-mono">(Intel)</span>
+      </button>
+      <button onclick="selectMember('nicholas')" id="tab-nicholas" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-gray-400 hover:text-white hover:bg-dark-800">
+        <span>📢 Nicholas</span>
+        <span class="text-[10px] opacity-75 font-mono">(Mktg)</span>
+      </button>
+      <div class="w-px h-4 bg-dark-700 mx-1"></div>
+      <button onclick="selectMember('overlap')" id="tab-overlap" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+        <span>Team Overlap (3 Members)</span>
+      </button>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="flex items-center gap-2">
+      <button onclick="openSyncModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Manage or Reschedule Weekly Standing Meeting">
+        <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>
+        <span>Standing Sync</span>
+      </button>
+      <button onclick="copyShareLink()" class="px-3 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Copy URL containing full team schedule state">
+        <i data-lucide="link" class="w-3.5 h-3.5"></i>
+        <span>Share Link</span>
+      </button>
+      <button onclick="postToDiscordWebhook()" id="btn-discord-post" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Post this week's schedule directly to Discord channel">
+        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        <span>Post to Discord</span>
+      </button>
+      <button onclick="exportICS()" class="px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-gray-300 text-xs font-semibold flex items-center gap-1.5 transition border border-dark-700">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>.ICS</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-1 max-w-[1700px] w-full mx-auto p-5 flex flex-col gap-5">
+
+    <!-- WEEK NAVIGATION & MILESTONE BAR -->
+    <div class="bg-dark-900 border border-dark-700 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
+      
+      <!-- WEEK CONTROLS WITH DIRECT CALENDAR PICKER -->
+      <div class="flex items-center gap-2">
+        <button onclick="changeWeek(-1)" class="p-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-gray-300 border border-dark-700 transition" title="Previous Week">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+        
+        <!-- CLICKABLE DATE PICKER BADGE -->
+        <div class="relative flex items-center">
+          <input type="date" id="native-date-picker" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" onchange="onDatePicked(this.value)">
+          <button class="flex items-center gap-2 bg-dark-800 hover:bg-dark-700/80 px-4 py-2 rounded-xl border border-dark-700 font-mono transition group text-left" title="Click to open calendar and choose any week">
+            <i data-lucide="calendar" class="w-4 h-4 text-amber-400 group-hover:scale-110 transition"></i>
+            <span class="text-xs font-bold text-white group-hover:text-amber-300 transition" id="current-week-label">Week 39: Sep 21 – Sep 27, 2026</span>
+            <i data-lucide="calendar-search" class="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 ml-1"></i>
+          </button>
+        </div>
+
+        <button onclick="changeWeek(1)" class="p-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-gray-300 border border-dark-700 transition" title="Next Week">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+        <button onclick="jumpToToday()" class="px-3 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-xs font-semibold text-gray-300 border border-dark-700 transition">
+          Today
+        </button>
+      </div>
+
+      <!-- KEY STUDIO MILESTONE SHORTCUTS -->
+      <div class="flex items-center gap-2 text-xs font-medium">
+        <span class="text-gray-500 font-mono text-[11px] mr-1">MILESTONES:</span>
+        <button onclick="jumpToDate('2027-01-25')" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition flex items-center gap-1 font-mono text-[11px]">
+          <span>🎮 Demo Launch</span>
+          <span class="opacity-70">(Jan 2027)</span>
+        </button>
+        <button onclick="jumpToDate('2027-02-15')" class="px-2.5 py-1.5 rounded-lg bg-amber-950/40 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition flex items-center gap-1 font-mono text-[11px]">
+          <span>🎪 Next Fest</span>
+          <span class="opacity-70">(Feb 2027)</span>
+        </button>
+        <button onclick="jumpToDate('2027-03-08')" class="px-2.5 py-1.5 rounded-lg bg-indigo-950/40 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 transition flex items-center gap-1 font-mono text-[11px]">
+          <span>🚀 Full Release</span>
+          <span class="opacity-70">(Mar 2027)</span>
+        </button>
+      </div>
+
+      <!-- COPY PREVIOUS WEEK & RESET -->
+      <div class="flex items-center gap-2">
+        <button onclick="copyPreviousWeek()" class="px-3 py-1.5 bg-dark-800 hover:bg-dark-700 text-xs text-gray-300 rounded-lg border border-dark-700 flex items-center gap-1.5 transition font-medium">
+          <i data-lucide="copy" class="w-3.5 h-3.5 text-gray-400"></i>
+          <span>Copy Previous Week</span>
+        </button>
+        <button onclick="resetCurrentWeek()" class="px-2.5 py-1.5 bg-dark-800 hover:bg-rose-900/40 text-xs text-gray-400 hover:text-rose-300 rounded-lg border border-dark-700 flex items-center gap-1 transition font-medium" title="Reset this week to default">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Reset Week</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- TOOLBAR: LABELS & PRESETS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      
+      <!-- ACTIVE PAINT LABEL SELECTOR -->
+      <div class="bg-dark-900 border border-dark-700 rounded-2xl p-3.5 flex items-center justify-between gap-2 shadow-sm">
+        <div>
+          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Paint Tool</span>
+          <span class="text-[10px] text-gray-500" id="tool-hint">Click or drag across slots</span>
+        </div>
+        <div class="flex items-center bg-dark-950 p-1 rounded-xl border border-dark-800 gap-1 flex-wrap">
+          <!-- Dev Free -->
+          <button onclick="setPaintType(1)" id="tool-1" class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>🎮 Dev Free</span>
+          </button>
+          <!-- Work -->
+          <button onclick="setPaintType(2)" id="tool-2" class="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 text-gray-400 hover:text-white">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span>💼 Work</span>
+          </button>
+          <!-- Busy (Distinct from Sleep) -->
+          <button onclick="setPaintType(4)" id="tool-4" class="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 text-gray-400 hover:text-white">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>🚫 Busy</span>
+          </button>
+          <!-- Sleep / Rest -->
+          <button onclick="setPaintType(0)" id="tool-0" class="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 text-gray-400 hover:text-white">
+            <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+            <span>🌙 Sleep</span>
+          </button>
+          <!-- Standing Sync -->
+          <button onclick="setPaintType(3)" id="tool-3" class="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 text-gray-400 hover:text-white">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>🏛️ Sync</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ONE-CLICK PRESETS -->
+      <div class="bg-dark-900 border border-dark-700 rounded-2xl p-3.5 flex items-center justify-between gap-2 shadow-sm">
+        <div>
+          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Quick Presets</span>
+          <span class="text-[10px] text-gray-500">Apply standard routine</span>
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button onclick="applyPreset('weekday_dev')" class="px-2.5 py-1.5 bg-dark-800 hover:bg-dark-700 text-[11px] text-amber-300 font-medium rounded-lg border border-dark-700 flex items-center gap-1 transition" title="5PM - 12AM Weekdays, Weekend Free">
+            <i data-lucide="zap" class="w-3 h-3"></i>
+            <span>5PM–12AM Weekdays</span>
+          </button>
+          <button onclick="applyPreset('weekend')" class="px-2.5 py-1.5 bg-dark-800 hover:bg-dark-700 text-[11px] text-emerald-300 font-medium rounded-lg border border-dark-700 flex items-center gap-1 transition" title="9AM - Midnight Weekend Free">
+            <i data-lucide="sun" class="w-3 h-3"></i>
+            <span>Weekend Free</span>
+          </button>
+          <button onclick="openSyncModal()" class="px-2.5 py-1.5 bg-amber-950/40 hover:bg-amber-900/40 text-[11px] text-amber-300 font-medium rounded-lg border border-amber-500/40 flex items-center gap-1 transition" title="Configure or Cancel Weekly Standing Meeting">
+            <i data-lucide="settings-2" class="w-3 h-3 text-amber-400"></i>
+            <span>Manage Sync</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STATS & RULES BANNER -->
+      <div class="bg-dark-900 border border-dark-700 rounded-2xl p-3.5 flex items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold" id="stat-icon">
+            👑
+          </div>
+          <div>
+            <span class="text-xs font-bold text-white block" id="stat-title">Miaro Ranaivoarison</span>
+            <span class="text-[10px] text-amber-400 font-mono flex items-center gap-1" id="stat-subtitle">
+              <i data-lucide="shield-alert" class="w-3 h-3"></i> Earliest Meeting Limit: 9:00 AM
+            </span>
+          </div>
+        </div>
+        <div class="text-right font-mono">
+          <span class="text-[10px] text-gray-500 block" id="stat-label">Weekly Dev Hours</span>
+          <span class="text-base font-bold text-emerald-400" id="stat-dev-hours">35 hrs/wk</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MAIN 24-HOUR WEEKLY GRID -->
+    <div class="bg-dark-900 border border-dark-700 rounded-3xl p-5 shadow-2xl flex flex-col gap-3">
+      
+      <!-- GRID HEADER WITH DATES & HOLIDAYS -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <div class="min-w-[1100px]">
+          
+          <div class="grid grid-cols-8 gap-2 mb-2 text-center" id="days-header-row">
+            <!-- Dynamically populated with real dates & holiday tags -->
+          </div>
+
+          <!-- 24-HOUR ROWS -->
+          <div id="grid-body" class="flex flex-col gap-1 relative">
+            <!-- Dynamically populated with 24 hours -->
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- OVERLAP SUMMARY CARD (SHOWN IN OVERLAP MODE) -->
+    <div id="overlap-card" class="hidden bg-gradient-to-r from-emerald-950/40 via-dark-900 to-amber-950/40 border border-emerald-500/40 rounded-3xl p-6 flex flex-wrap items-center justify-between gap-6 shadow-xl">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <i data-lucide="sparkles" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h4 class="text-base font-bold text-white">Team Overlap Analysis (3 Core Members: Miaro, Joachim, Nicholas)</h4>
+          <p class="text-xs text-gray-300 mt-0.5" id="overlap-subtitle">Found simultaneous availability across team members!</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 font-mono text-xs">
+        <div class="bg-dark-950 px-4 py-2.5 rounded-xl border border-dark-700">
+          <span class="text-gray-500 block text-[10px]">ALL 3 MEMBERS FREE</span>
+          <span class="text-emerald-400 font-bold" id="overlap-all3-hours">0 hrs/wk</span>
+        </div>
+        <div class="bg-dark-950 px-4 py-2.5 rounded-xl border border-dark-700">
+          <span class="text-gray-500 block text-[10px]">2+ MEMBERS SHARED</span>
+          <span class="text-amber-400 font-bold" id="overlap-total-hours">35 hrs/wk</span>
+        </div>
+        <div class="bg-dark-950 px-4 py-2.5 rounded-xl border border-amber-500/40">
+          <span class="text-gray-500 block text-[10px]">WEEKLY STANDING SYNC</span>
+          <span class="text-amber-300 font-bold" id="overlap-standing-sync">Sunday 19:00 EDT</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- STANDING SYNC MANAGER MODAL -->
+  <div id="sync-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-900 border border-dark-700 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between border-b border-dark-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+            🏛️
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm text-white">Weekly Standing Sync Manager</h3>
+            <p class="text-[11px] text-gray-400">Reschedule or cancel all-hands sync for 3 members</p>
+          </div>
+        </div>
+        <button onclick="closeSyncModal()" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-800">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-3 text-xs">
+        <div>
+          <label class="block text-gray-400 font-semibold mb-1">Day of the Week</label>
+          <select id="sync-day-select" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 outline-none">
+            <option value="6">Sunday (Default)</option>
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 font-semibold mb-1">Start Time (EDT)</label>
+            <select id="sync-hour-select" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 outline-none">
+              <option value="9">09:00 AM (09:00)</option>
+              <option value="10">10:00 AM (10:00)</option>
+              <option value="11">11:00 AM (11:00)</option>
+              <option value="12">12:00 PM (12:00)</option>
+              <option value="13">01:00 PM (13:00)</option>
+              <option value="14">02:00 PM (14:00)</option>
+              <option value="15">03:00 PM (15:00)</option>
+              <option value="16">04:00 PM (16:00)</option>
+              <option value="17">05:00 PM (17:00)</option>
+              <option value="18">06:00 PM (18:00)</option>
+              <option value="19" selected>07:00 PM (19:00)</option>
+              <option value="20">08:00 PM (20:00)</option>
+              <option value="21">09:00 PM (21:00)</option>
+              <option value="22">10:00 PM (22:00)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-400 font-semibold mb-1">Duration</label>
+            <select id="sync-duration-select" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 outline-none">
+              <option value="1" selected>1 Hour</option>
+              <option value="2">2 Hours</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="flex flex-col gap-2 pt-2 border-t border-dark-800">
+        <button onclick="applyCustomStandingSync()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Apply to Current Week</span>
+        </button>
+        <button onclick="cancelCurrentWeekSync()" class="w-full py-2 bg-dark-800 hover:bg-rose-950/60 text-gray-300 hover:text-rose-300 border border-dark-700 hover:border-rose-500/40 rounded-xl text-xs flex items-center justify-center gap-2 transition font-medium">
+          <i data-lucide="calendar-x-2" class="w-4 h-4"></i>
+          <span>Cancel / Remove Sync for this Week</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-emerald-600 text-white font-medium text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i data-lucide="check-circle" class="w-4 h-4"></i>
+    <span id="toast-msg">Updated successfully!</span>
+  </div>
+
+  <script>
+    // 1. HOLIDAY & MILESTONES DATABASE (2026 - 2027)
+    const HOLIDAYS = {
+      '2026-10-12': '🍁 Thanksgiving (Action de grâce)',
+      '2026-10-31': '🎃 Halloween',
+      '2026-12-24': '🎄 Christmas Eve',
+      '2026-12-25': '🎅 Christmas Day',
+      '2026-12-26': '🎁 Boxing Day',
+      '2026-12-31': '🥂 New Year\'s Eve',
+      '2027-01-01': '✨ New Year\'s Day (Jour de l\'An)',
+      '2027-01-31': '🎮 PABLITO DEMO TARGET LAUNCH',
+      '2027-02-14': '💖 Valentine\'s Day',
+      '2027-02-15': '🎪 STEAM NEXT FEST (Feb 2027)',
+      '2027-03-08': '🚀 PABLITO FULL STEAM RELEASE WEEK',
+      '2027-03-26': '✝️ Good Friday (Vendredi saint)',
+      '2027-03-29': '🐣 Easter Monday'
+    };
+
+    // Label Types:
+    // 0: Sleep / Rest (🌙) -> Charcoal / Black
+    // 1: Dev Free / Available (🎮) -> Emerald Green
+    // 2: Work / Day Job (💼) -> Blue
+    // 3: Standing Sync / Meeting (🏛️) -> Amber / Gold
+    // 4: Busy / Unavailable (🚫) -> Crimson / Red (Distinct from Sleep)
+    // 5: Holiday / Off (🏖️) -> Rose
+
+    const LABEL_INFO = {
+      0: { name: 'Sleep / Rest', color: 'bg-dark-950 border-dark-800 text-gray-700', badge: '🌙 SLEEP' },
+      1: { name: 'Dev Free', color: 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50 text-emerald-400 font-bold', badge: 'FREE' },
+      2: { name: 'Work / Day Job', color: 'bg-blue-950/40 hover:bg-blue-900/40 border-blue-600/30 text-blue-400', badge: 'WORK' },
+      3: { name: 'Standing Sync', color: 'bg-amber-500/25 hover:bg-amber-500/35 border-amber-500/60 text-amber-300 font-extrabold', badge: '🏛️ SYNC' },
+      4: { name: 'Busy / Personal', color: 'bg-rose-950/50 hover:bg-rose-900/50 border-rose-600/40 text-rose-300 font-bold', badge: '🚫 BUSY' },
+      5: { name: 'Holiday / Off', color: 'bg-purple-950/40 hover:bg-purple-900/40 border-purple-600/30 text-purple-400 font-bold', badge: '🏖️ OFF' }
+    };
+
+    let currentMember = 'miaro';
+    let currentPaintType = 1; // Dev Free default
+    let isPainting = false;
+
+    // Window-level mouseup ensures painting never gets stuck if mouse is released anywhere
+    window.addEventListener('mouseup', () => {
+      isPainting = false;
+    });
+
+    // Current Monday start date of the week being viewed
+    let currentWeekStart = getMonday(new Date(2026, 8, 21)); // Start at Sep 21, 2026
+
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.getFullYear(), date.getMonth(), diff, 0, 0, 0, 0);
+    }
+
+    // Timezone-safe local date key: YYYY-MM-DD
+    function formatDateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // Storage: schedules[member][YYYY-MM-DD] = array of 24 ints (0-5)
+    let schedules = {
+      miaro: JSON.parse(localStorage.getItem('lowkey_matrix_miaro')) || {},
+      joachim: JSON.parse(localStorage.getItem('lowkey_matrix_joachim')) || {},
+      nicholas: JSON.parse(localStorage.getItem('lowkey_matrix_nicholas')) || {}
+    };
+
+    function getDefaultDaySchedule(dateStr) {
+      const parts = dateStr.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+      const isSunday = (d.getDay() === 0);
+
+      const arr = Array(24).fill(0);
+      for (let h = 0; h < 24; h++) {
+        if (h < 9) {
+          arr[h] = 0; // Sleep 00:00 - 09:00
+        } else if (h >= 9 && h < 17) {
+          arr[h] = isWeekend ? 1 : 2; // Weekend: Free (1), Weekday: Work (2)
+        } else {
+          // Sunday 19:00-20:00 (7PM) default weekly standing sync
+          if (isSunday && h === 19) {
+            arr[h] = 3; // Standing Sync
+          } else {
+            arr[h] = 1; // Dev Free 17:00 - 24:00
+          }
+        }
+      }
+      return arr;
+    }
+
+    function getDaySchedule(member, dateStr) {
+      if (!schedules[member][dateStr]) {
+        schedules[member][dateStr] = getDefaultDaySchedule(dateStr);
+      }
+      return schedules[member][dateStr];
+    }
+
+    function setPaintType(type) {
+      currentPaintType = type;
+      [0, 1, 2, 3, 4].forEach(t => {
+        const btn = document.getElementById(`tool-${t}`);
+        if (btn) {
+          if (t === type) {
+            btn.className = 'px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 bg-dark-700 text-white border border-dark-500 shadow-sm';
+          } else {
+            btn.className = 'px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 text-gray-400 hover:text-white';
+          }
+        }
+      });
+    }
+
+    function selectMember(member) {
+      currentMember = member;
+      ['miaro', 'joachim', 'nicholas', 'overlap'].forEach(m => {
+        const tab = document.getElementById(`tab-${m}`);
+        if (m === member) {
+          tab.className = (m === 'overlap') 
+            ? 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-emerald-500 text-black shadow-md'
+            : 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-amber-500 text-black shadow-md';
+        } else {
+          tab.className = (m === 'overlap')
+            ? 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30'
+            : 'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-400 hover:text-white hover:bg-dark-800';
+        }
+      });
+
+      const overlapCard = document.getElementById('overlap-card');
+      const toolHint = document.getElementById('tool-hint');
+
+      if (member === 'overlap') {
+        overlapCard.classList.remove('hidden');
+        toolHint.innerText = 'Viewing 3-member team aggregate (read-only)';
+        document.getElementById('stat-icon').innerText = '⚡';
+        document.getElementById('stat-title').innerText = 'Studio Overlap Matrix (3 Members)';
+        document.getElementById('stat-subtitle').innerHTML = '<span class="text-emerald-400 font-mono">Miaro (Lead) · Joachim (Intel) · Nicholas (Mktg)</span>';
+        document.getElementById('stat-label').innerText = 'Shared Overlap';
+      } else {
+        overlapCard.classList.add('hidden');
+        toolHint.innerText = 'Click or drag across slots';
+        document.getElementById('stat-label').innerText = 'Weekly Dev Hours';
+        document.getElementById('stat-subtitle').innerHTML = '<i data-lucide="shield-alert" class="w-3 h-3"></i> Earliest Meeting Limit: 9:00 AM';
+        if (member === 'miaro') {
+          document.getElementById('stat-icon').innerText = '👑';
+          document.getElementById('stat-title').innerText = 'Miaro Ranaivoarison (Studio Lead)';
+        } else if (member === 'joachim') {
+          document.getElementById('stat-icon').innerText = '⚙️';
+          document.getElementById('stat-title').innerText = 'Joachim Cishugi (Automation & Intel)';
+        } else if (member === 'nicholas') {
+          document.getElementById('stat-icon').innerText = '📢';
+          document.getElementById('stat-title').innerText = 'Nicholas Morin (Creative & Mktg)';
+        }
+      }
+
+      renderWeek();
+    }
+
+    function changeWeek(offset) {
+      currentWeekStart.setDate(currentWeekStart.getDate() + (offset * 7));
+      renderWeek();
+    }
+
+    function jumpToToday() {
+      currentWeekStart = getMonday(new Date(2026, 8, 21));
+      renderWeek();
+    }
+
+    function jumpToDate(dateStr) {
+      const parts = dateStr.split('-');
+      currentWeekStart = getMonday(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+      renderWeek();
+    }
+
+    // Direct calendar selection
+    function onDatePicked(dateVal) {
+      if (!dateVal) return;
+      jumpToDate(dateVal);
+      showToast(`Jumped to week of ${dateVal}`);
+    }
+
+    function copyPreviousWeek() {
+      if (currentMember === 'overlap') return;
+      const prevWeekStart = new Date(currentWeekStart);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+
+      for (let i = 0; i < 7; i++) {
+        const prevD = new Date(prevWeekStart);
+        prevD.setDate(prevD.getDate() + i);
+        const prevKey = formatDateKey(prevD);
+
+        const currD = new Date(currentWeekStart);
+        currD.setDate(currD.getDate() + i);
+        const currKey = formatDateKey(currD);
+
+        schedules[currentMember][currKey] = [...getDaySchedule(currentMember, prevKey)];
+      }
+
+      saveLocal();
+      renderWeek();
+      showToast('Copied schedule from previous week!');
+    }
+
+    function resetCurrentWeek() {
+      if (currentMember === 'overlap') return;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateKey = formatDateKey(d);
+        schedules[currentMember][dateKey] = getDefaultDaySchedule(dateKey);
+      }
+      saveLocal();
+      renderWeek();
+      showToast('Reset current week to defaults!');
+    }
+
+    // Modal controls for Standing Sync
+    function openSyncModal() {
+      document.getElementById('sync-modal').classList.remove('hidden');
+    }
+
+    function closeSyncModal() {
+      document.getElementById('sync-modal').classList.add('hidden');
+    }
+
+    function applyCustomStandingSync() {
+      const dayIdx = parseInt(document.getElementById('sync-day-select').value);
+      const startH = parseInt(document.getElementById('sync-hour-select').value);
+      const dur = parseInt(document.getElementById('sync-duration-select').value);
+
+      // Clear any existing sync from the current week first
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const key = formatDateKey(d);
+        ['miaro', 'joachim', 'nicholas'].forEach(m => {
+          const sched = getDaySchedule(m, key);
+          for (let h = 0; h < 24; h++) {
+            if (sched[h] === 3) sched[h] = 1; // revert old sync to dev free
+          }
+        });
+      }
+
+      // Apply new sync slot
+      const targetD = new Date(currentWeekStart);
+      targetD.setDate(targetD.getDate() + dayIdx);
+      const targetKey = formatDateKey(targetD);
+
+      ['miaro', 'joachim', 'nicholas'].forEach(m => {
+        const sched = getDaySchedule(m, targetKey);
+        for (let h = startH; h < startH + dur && h < 24; h++) {
+          sched[h] = 3; // Set as standing sync
+        }
+      });
+
+      saveLocal();
+      closeSyncModal();
+      renderWeek();
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      showToast(`Scheduled Standing Sync on ${dayNames[dayIdx]} at ${startH}:00 EDT!`);
+    }
+
+    function cancelCurrentWeekSync() {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const key = formatDateKey(d);
+        ['miaro', 'joachim', 'nicholas'].forEach(m => {
+          const sched = getDaySchedule(m, key);
+          for (let h = 0; h < 24; h++) {
+            if (sched[h] === 3) sched[h] = 1; // clear sync to dev free
+          }
+        });
+      }
+      saveLocal();
+      closeSyncModal();
+      renderWeek();
+      showToast('Canceled Standing Sync for this week!');
+    }
+
+    function setDayPreset(dateStr, presetType) {
+      if (currentMember === 'overlap') return;
+      const sched = getDaySchedule(currentMember, dateStr);
+      for (let h = 0; h < 24; h++) {
+        if (presetType === 'free_all') {
+          sched[h] = (h < 9) ? 0 : 1; // 9AM - Midnight Free
+        } else if (presetType === 'work_standard') {
+          sched[h] = (h < 9) ? 0 : (h < 17 ? 2 : 1); // 9-5 Work, 5-12 Free
+        } else if (presetType === 'busy_all') {
+          sched[h] = (h < 9) ? 0 : 4; // Busy all day
+        } else if (presetType === 'off_all') {
+          sched[h] = 5; // Full day off
+        }
+      }
+      saveLocal();
+      renderWeek();
+      showToast(`Updated schedule for ${dateStr}!`);
+    }
+
+    // Direct slot paint on click / drag
+    function applySlotPaint(dateStr, hour, isClick = false) {
+      if (currentMember === 'overlap') return;
+      const sched = getDaySchedule(currentMember, dateStr);
+      if (isClick && sched[hour] === currentPaintType) {
+        sched[hour] = 0; // Toggle to Sleep if clicked again
+      } else {
+        sched[hour] = currentPaintType; // Paint active tool
+      }
+      saveLocal();
+      renderWeek();
+    }
+
+    function handleSlotMouseDown(dateStr, hour) {
+      if (currentMember === 'overlap') return;
+      isPainting = true;
+      applySlotPaint(dateStr, hour, true);
+    }
+
+    function handleSlotMouseEnter(dateStr, hour) {
+      if (!isPainting || currentMember === 'overlap') return;
+      applySlotPaint(dateStr, hour, false);
+    }
+
+    function saveLocal() {
+      localStorage.setItem('lowkey_matrix_miaro', JSON.stringify(schedules.miaro));
+      localStorage.setItem('lowkey_matrix_joachim', JSON.stringify(schedules.joachim));
+      localStorage.setItem('lowkey_matrix_nicholas', JSON.stringify(schedules.nicholas));
+    }
+
+    function applyPreset(type) {
+      if (currentMember === 'overlap') return;
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateKey = formatDateKey(d);
+        const sched = getDaySchedule(currentMember, dateKey);
+        const isWeekend = (i === 5 || i === 6);
+        const isSunday = (i === 6);
+
+        for (let h = 0; h < 24; h++) {
+          if (type === 'weekday_dev') {
+            if (!isWeekend) {
+              if (h < 9) sched[h] = 0;       // Sleep
+              else if (h < 17) sched[h] = 2; // Work
+              else sched[h] = 1;             // Dev Free
+            } else {
+              // Keep weekend free from 9AM to Midnight
+              if (h >= 9) {
+                if (isSunday && h === 19) sched[h] = 3; // Standing Sync
+                else sched[h] = 1;
+              } else {
+                sched[h] = 0;
+              }
+            }
+          } else if (type === 'weekend') {
+            if (isWeekend) {
+              if (h >= 9 && h <= 23) {
+                if (isSunday && h === 19) sched[h] = 3;
+                else sched[h] = 1;
+              } else {
+                sched[h] = 0;
+              }
+            }
+          }
+        }
+      }
+
+      saveLocal();
+      renderWeek();
+      showToast('Applied preset to current week!');
+    }
+
+    // Explicit 1-Hour Time Ranges (e.g. "23:00 – 00:00 (11 PM – 12 AM)")
+    function getFormattedHourInterval(h) {
+      const start24 = `${h.toString().padStart(2, '0')}:00`;
+      const nextH = (h + 1) % 24;
+      const end24 = `${nextH.toString().padStart(2, '0')}:00`;
+
+      function format12(hourNum) {
+        if (hourNum === 0) return '12 AM';
+        if (hourNum < 12) return `${hourNum} AM`;
+        if (hourNum === 12) return '12 PM';
+        return `${hourNum - 12} PM`;
+      }
+
+      const start12 = format12(h);
+      const end12 = format12(nextH);
+
+      return {
+        range24: `${start24} – ${end24}`,
+        range12: `${start12} – ${end12}`
+      };
+    }
+
+    function renderWeek() {
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        weekDates.push(d);
+      }
+
+      // 1. Update Week Label
+      const startStr = weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const endStr = weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('current-week-label').innerText = `${startStr} – ${endStr}`;
+      document.getElementById('native-date-picker').value = formatDateKey(weekDates[0]);
+
+      // 2. Render Header Row
+      const headerRow = document.getElementById('days-header-row');
+      headerRow.innerHTML = `<div class="py-2 font-mono text-gray-500 text-left pl-2 text-xs">TIME RANGE (EDT)</div>`;
+
+      weekDates.forEach((d, idx) => {
+        const dateKey = formatDateKey(d);
+        const holiday = HOLIDAYS[dateKey];
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayNum = d.getDate();
+        const isWeekend = (idx === 5 || idx === 6);
+
+        const dayCol = document.createElement('div');
+        dayCol.className = `p-2.5 rounded-2xl border flex flex-col items-center justify-between gap-1.5 relative group ${
+          isWeekend ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' : 'bg-dark-800/80 border-dark-700 text-gray-200'
+        }`;
+
+        let holidayHtml = holiday ? `<span class="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-mono truncate max-w-full" title="${holiday}">🎉 ${holiday.split(' ')[1] || 'Holiday'}</span>` : '';
+
+        dayCol.innerHTML = `
+          <div class="flex items-center justify-between w-full">
+            <span class="text-xs font-bold uppercase tracking-wider">${dayName}</span>
+            <span class="text-xs font-mono font-extrabold text-white bg-dark-900/80 px-1.5 py-0.5 rounded border border-dark-700">${dayNum}</span>
+          </div>
+          ${holidayHtml}
+          ${currentMember !== 'overlap' ? `
+            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition mt-0.5">
+              <button onclick="setDayPreset('${dateKey}', 'free_all')" class="text-[9px] bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-1 py-0.5 rounded font-mono" title="Set Day Free">
+                ⚡ Free
+              </button>
+              <button onclick="setDayPreset('${dateKey}', 'work_standard')" class="text-[9px] bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-1 py-0.5 rounded font-mono" title="9-5 Work">
+                💼 Work
+              </button>
+              <button onclick="setDayPreset('${dateKey}', 'busy_all')" class="text-[9px] bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 px-1 py-0.5 rounded font-mono" title="Mark Busy">
+                🚫 Busy
+              </button>
+            </div>
+          ` : ''}
+        `;
+        headerRow.appendChild(dayCol);
+      });
+
+      // 3. Render 24 Hours Body
+      const body = document.getElementById('grid-body');
+      body.innerHTML = '';
+
+      let totalDevHours = 0;
+      let totalAll3Hours = 0;
+      let totalSharedHours = 0;
+
+      let standingSyncInfo = 'None Scheduled';
+
+      for (let h = 0; h < 24; h++) {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-8 gap-2 items-center relative';
+
+        // 9 AM Early Meeting Threshold Line
+        if (h === 9) {
+          const threshold = document.createElement('div');
+          threshold.className = 'absolute -top-1 left-0 right-0 border-t-2 border-dashed border-amber-500/50 z-30 pointer-events-none flex items-center justify-end pr-2';
+          threshold.innerHTML = `<span class="bg-amber-500 text-black font-mono font-bold text-[9px] px-2 py-0.5 rounded-full transform -translate-y-2 shadow">⚡ 9:00 AM EARLIEST MEETING LIMIT</span>`;
+          row.appendChild(threshold);
+        }
+
+        // Time Interval Label (24h + 12h AM/PM explicit range)
+        const timeInterval = getFormattedHourInterval(h);
+        const timeLabel = document.createElement('div');
+        timeLabel.className = 'text-[11px] font-mono text-gray-400 pl-1 flex flex-col justify-center leading-tight';
+        timeLabel.innerHTML = `
+          <span class="text-white font-bold tracking-tight">${timeInterval.range24}</span>
+          <span class="text-[9px] text-gray-500 font-normal">${timeInterval.range12}</span>
+        `;
+        row.appendChild(timeLabel);
+
+        // Days
+        weekDates.forEach((d, dayIdx) => {
+          const dateKey = formatDateKey(d);
+          const cell = document.createElement('div');
+          cell.className = 'slot-cell h-7 rounded-lg border flex items-center justify-center text-[10px] font-mono font-bold relative overflow-hidden text-center px-1 truncate';
+
+          if (currentMember === 'overlap') {
+            const mVal = getDaySchedule('miaro', dateKey)[h];
+            const jVal = getDaySchedule('joachim', dateKey)[h];
+            const nVal = getDaySchedule('nicholas', dateKey)[h];
+
+            // Check if Standing Sync is scheduled for team
+            const isSync = (mVal === 3 && jVal === 3 && nVal === 3);
+
+            const freeMembers = [];
+            if (mVal === 1 || mVal === 3) freeMembers.push('Miaro');
+            if (jVal === 1 || jVal === 3) freeMembers.push('Joachim');
+            if (nVal === 1 || nVal === 3) freeMembers.push('Nicholas');
+
+            if (isSync) {
+              cell.className += ' bg-amber-500/30 border-amber-500/80 text-amber-300 shadow-md font-extrabold';
+              cell.innerHTML = '<span>🏛️ STANDING SYNC</span>';
+              cell.title = 'Weekly Studio Standing Sync (All 3 Members: Miaro, Joachim, Nicholas)';
+              totalAll3Hours++;
+              totalSharedHours++;
+              const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+              standingSyncInfo = `${dayName} ${h}:00 EDT`;
+            } else if (freeMembers.length === 3) {
+              cell.className += ' bg-emerald-500/40 border-emerald-400 text-emerald-200 shadow-md font-extrabold';
+              cell.innerHTML = '<span>🟢 ALL 3 FREE</span>';
+              cell.title = 'Miaro, Joachim, Nicholas are all available';
+              totalAll3Hours++;
+              totalSharedHours++;
+            } else if (freeMembers.length === 2) {
+              cell.className += ' bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold';
+              cell.innerHTML = `<span>🟡 ${freeMembers[0]} & ${freeMembers[1]}</span>`;
+              cell.title = `${freeMembers[0]} & ${freeMembers[1]} are available`;
+              totalSharedHours++;
+            } else if (freeMembers.length === 1) {
+              const name = freeMembers[0];
+              if (name === 'Miaro') {
+                cell.className += ' bg-amber-950/40 border-amber-500/30 text-amber-300';
+              } else if (name === 'Joachim') {
+                cell.className += ' bg-blue-950/40 border-blue-500/30 text-blue-300';
+              } else {
+                cell.className += ' bg-purple-950/40 border-purple-500/30 text-purple-300';
+              }
+              cell.innerHTML = `<span>${name}</span>`;
+              cell.title = `Only ${name} is available`;
+            } else {
+              // 0 members free
+              const anyBusy = (mVal === 4 || jVal === 4 || nVal === 4);
+              const anyWork = (mVal === 2 || jVal === 2 || nVal === 2);
+              
+              if (h < 9) {
+                cell.className += ' bg-dark-950/60 border-dark-800 text-gray-700 font-normal';
+                cell.innerText = '🌙';
+              } else if (anyWork) {
+                cell.className += ' bg-blue-950/20 border-dark-800 text-blue-400/50 font-normal';
+                cell.innerText = 'WORK';
+              } else if (anyBusy) {
+                cell.className += ' bg-rose-950/20 border-dark-800 text-rose-400/50 font-normal';
+                cell.innerText = 'BUSY';
+              } else {
+                cell.className += ' bg-dark-950/60 border-dark-800 text-gray-700 font-normal';
+                cell.innerText = '—';
+              }
+            }
+          } else {
+            cell.classList.add('cursor-pointer');
+            const val = getDaySchedule(currentMember, dateKey)[h];
+            const info = LABEL_INFO[val] || LABEL_INFO[0];
+            cell.className += ` ${info.color}`;
+            cell.innerText = info.badge;
+
+            if (val === 1 || val === 3) totalDevHours++;
+
+            cell.onmousedown = (e) => {
+              e.preventDefault();
+              handleSlotMouseDown(dateKey, h);
+            };
+            cell.onmouseenter = (e) => {
+              e.preventDefault();
+              handleSlotMouseEnter(dateKey, h);
+            };
+          }
+
+          row.appendChild(cell);
+        });
+
+        body.appendChild(row);
+      }
+
+      // Update stat hours
+      if (currentMember === 'overlap') {
+        document.getElementById('stat-dev-hours').innerText = `${totalSharedHours} hrs`;
+        document.getElementById('overlap-all3-hours').innerText = `${totalAll3Hours} hrs/wk`;
+        document.getElementById('overlap-total-hours').innerText = `${totalSharedHours} hrs/wk`;
+        document.getElementById('overlap-standing-sync').innerText = standingSyncInfo;
+        document.getElementById('overlap-subtitle').innerText = `Found ${totalAll3Hours} hrs where ALL 3 members are available, and ${totalSharedHours} hrs of 2+ member shared bandwidth this week!`;
+      } else {
+        document.getElementById('stat-dev-hours').innerText = `${totalDevHours} hrs/wk`;
+      }
+
+      lucide.createIcons();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2500);
+    }
+
+    function getDiscordWebhookUrl() {
+      return localStorage.getItem('lowkey_discord_webhook') || '';
+    }
+
+    function configureDiscordWebhook() {
+      const current = getDiscordWebhookUrl();
+      const entered = prompt('Enter your Discord Webhook URL for 1-click posting (stored privately in your local browser only):', current);
+      if (entered !== null) {
+        localStorage.setItem('lowkey_discord_webhook', entered.trim());
+        showToast(entered.trim() ? '✅ Webhook URL saved to local browser storage!' : 'Cleared local webhook URL.');
+      }
+    }
+
+    function copyDiscordSchedule() {
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        weekDates.push(d);
+      }
+
+      let text = `> # 📅 LOWKEY STUDIOS — ACTIVE DEV SCHEDULE (${weekDates[0].toLocaleDateString()} – ${weekDates[6].toLocaleDateString()})\n`;
+      text += `> **Timezone:** Montreal (EDT) | **Earliest Meeting Threshold:** 09:00 AM\n`;
+      text += `> **Weekly Standing Sync:** ${document.getElementById('overlap-standing-sync')?.innerText || 'Sundays 19:00 EDT'}\n>\n`;
+      text += `> \`\`\`\n`;
+      text += `> Date         │ Day       │ Miaro (Lead)  │ Joachim (Intel) │ Nicholas (Mktg) │ Overlap Window\n`;
+      text += `> ─────────────┼───────────┼───────────────┼─────────────────┼─────────────────┼───────────────────\n`;
+
+      weekDates.forEach(d => {
+        const key = formatDateKey(d);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).padEnd(9);
+        const mSched = getDaySchedule('miaro', key);
+        const jSched = getDaySchedule('joachim', key);
+        const nSched = getDaySchedule('nicholas', key);
+        
+        const all3Overlaps = [];
+        const pairOverlaps = [];
+        for (let h = 0; h < 24; h++) {
+          const m = (mSched[h] === 1 || mSched[h] === 3);
+          const j = (jSched[h] === 1 || jSched[h] === 3);
+          const n = (nSched[h] === 1 || nSched[h] === 3);
+          if (m && j && n) all3Overlaps.push(h);
+          else if ((m && j) || (m && n) || (j && n)) pairOverlaps.push(h);
+        }
+
+        let overlapStr = 'None';
+        if (all3Overlaps.length > 0) {
+          overlapStr = `🟢 All 3 (${all3Overlaps[0]}:00–${all3Overlaps[all3Overlaps.length-1]+1}:00)`;
+        } else if (pairOverlaps.length > 0) {
+          overlapStr = `🟡 Pairs (${pairOverlaps[0]}:00–${pairOverlaps[pairOverlaps.length-1]+1}:00)`;
+        }
+
+        text += `> ${key}   │ ${dayName} │ 17:00 – 24:00 │ 17:00 – 24:00   │ 17:00 – 24:00   │ ${overlapStr.padEnd(19)}\n`;
+      });
+      text += `> \`\`\`\n`;
+
+      navigator.clipboard.writeText(text);
+      showToast('📋 Copied Markdown schedule for Discord!');
+    }
+
+    function generateShareURL() {
+      const payload = {
+        schedules: schedules,
+        weekStart: formatDateKey(currentWeekStart)
+      };
+      const jsonStr = JSON.stringify(payload);
+      const encoded = btoa(encodeURIComponent(jsonStr));
+      const baseUrl = window.location.origin + window.location.pathname;
+      return `${baseUrl}#data=${encoded}`;
+    }
+
+    function copyShareLink() {
+      const url = generateShareURL();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('🔗 Copied share link with full team schedule state!');
+        }).catch(() => {
+          prompt('Copy this share URL:', url);
+        });
+      } else {
+        prompt('Copy this share URL:', url);
+      }
+    }
+
+    async function postToDiscordWebhook() {
+      const webhookUrl = getDiscordWebhookUrl();
+      if (!webhookUrl) {
+        const wantsWebhook = confirm('No private Discord Webhook URL is configured in your browser.\n\n• Click [OK] to enter your private Webhook URL (stored only on your device).\n• Click [Cancel] to copy the formatted Markdown schedule to clipboard instead.');
+        if (wantsWebhook) {
+          configureDiscordWebhook();
+          return;
+        } else {
+          copyDiscordSchedule();
+          return;
+        }
+      }
+
+      const btn = document.getElementById('btn-discord-post');
+      if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+      
+      const weekDates = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        weekDates.push(d);
+      }
+
+      const shareUrl = generateShareURL();
+      const weekLabel = `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      const syncInfoText = document.getElementById('overlap-standing-sync')?.innerText || 'Sundays 19:00 EDT';
+
+      // Calculate overlap stats
+      let totalAll3 = 0;
+      let totalOverlap = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = weekDates[i];
+        const key = formatDateKey(d);
+        const m = getDaySchedule('miaro', key);
+        const j = getDaySchedule('joachim', key);
+        const n = getDaySchedule('nicholas', key);
+        for (let h = 0; h < 24; h++) {
+          const isM = (m[h] === 1 || m[h] === 3);
+          const isJ = (j[h] === 1 || j[h] === 3);
+          const isN = (n[h] === 1 || n[h] === 3);
+          if (isM && isJ && isN) totalAll3++;
+          if ((isM && isJ) || (isM && isN) || (isJ && isN)) totalOverlap++;
+        }
+      }
+
+      const senderName = currentMember === 'miaro' ? '👑 Miaro' : currentMember === 'joachim' ? '⚙️ Joachim' : currentMember === 'nicholas' ? '📢 Nicholas' : 'Team';
+
+      const payload = {
+        embeds: [
+          {
+            title: `🗓️ Lowkey Studios — Schedule Update for Week of ${weekLabel}`,
+            description: `Team availability matrix has been updated by **${senderName}**!`,
+            color: 16098851,
+            fields: [
+              {
+                name: '🏛️ Standing Sync',
+                value: `**${syncInfoText}**`,
+                inline: true
+              },
+              {
+                name: '⚡ Bandwidth',
+                value: `🟢 **${totalAll3} hrs** All 3 Free\n🟡 **${totalOverlap} hrs** Team Overlap`,
+                inline: true
+              },
+              {
+                name: '🔗 Open Live Schedule Hub',
+                value: `[**👉 Click Here to Open & Edit in Browser**](${shareUrl})`,
+                inline: false
+              }
+            ],
+            footer: {
+              text: 'Lowkey Studios • Core Team Availability Hub'
+            },
+            timestamp: new Date().toISOString()
+          }
+        ]
+      };
+
+      try {
+        const res = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok || res.status === 204) {
+          showToast('✅ Successfully posted schedule to Discord #team-availability!');
+        } else {
+          showToast('⚠️ Discord post returned status: ' + res.status);
+        }
+      } catch (err) {
+        console.error('Webhook error:', err);
+        showToast('⚠️ Direct webhook blocked or failed. Copied Markdown schedule to clipboard!');
+        copyDiscordSchedule();
+      } finally {
+        if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    function loadFromHash() {
+      try {
+        const hash = window.location.hash;
+        if (hash && hash.includes('#data=')) {
+          const b64 = hash.split('#data=')[1];
+          const jsonStr = decodeURIComponent(atob(b64));
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.schedules) {
+            schedules = {
+              miaro: { ...schedules.miaro, ...(parsed.schedules.miaro || {}) },
+              joachim: { ...schedules.joachim, ...(parsed.schedules.joachim || {}) },
+              nicholas: { ...schedules.nicholas, ...(parsed.schedules.nicholas || {}) }
+            };
+            saveLocal();
+          }
+          if (parsed.weekStart) {
+            jumpToDate(parsed.weekStart);
+          }
+          showToast('✨ Loaded synchronized team schedule from link!');
+        }
+      } catch (e) {
+        console.warn('Could not parse hash data:', e);
+      }
+    }
+
+    function exportICS() {
+      let icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Lowkey Studios//Availability Matrix//EN\n`;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateKey = formatDateKey(d).replace(/-/g, '');
+        icsContent += `BEGIN:VEVENT\nSUMMARY:Lowkey Studios Co-Working Window\nDTSTART:${dateKey}T170000\nDTEND:${dateKey}T235900\nDESCRIPTION:Core evening development window for Pablito\nEND:VEVENT\n`;
+      }
+      
+      // Weekly standing sync event
+      const sunD = new Date(currentWeekStart);
+      sunD.setDate(sunD.getDate() + 6);
+      const sunDateKey = formatDateKey(sunD).replace(/-/g, '');
+      icsContent += `BEGIN:VEVENT\nSUMMARY:Lowkey Studios Weekly Standing Sync\nDTSTART:${sunDateKey}T190000\nDTEND:${sunDateKey}T200000\nDESCRIPTION:Weekly all-hands sync for Miaro, Joachim, and Nicholas\nEND:VEVENT\n`;
+      icsContent += `END:VCALENDAR`;
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', `lowkey_schedule_${formatDateKey(currentWeekStart)}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Exported weekly .ICS file with Standing Sync!');
+    }
+
+    // Initial render & state load
+    loadFromHash();
+    renderWeek();
+  </script>
+</body>
+</html>
